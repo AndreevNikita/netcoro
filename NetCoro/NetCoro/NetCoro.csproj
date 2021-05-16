@@ -11,6 +11,7 @@
     <PackageTags>c# coroutines multithreading</PackageTags>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Description>The conceptual library, that adds coroutines to the c# language</Description>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
   <ItemGroup>
