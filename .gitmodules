@@ -1,0 +1,3 @@
+[submodule "SimpleMultithreadQueue"]
+	path = SimpleMultithreadQueue
+	url = https://github.com/AndreevNikita/SimpleMultithreadQueue
