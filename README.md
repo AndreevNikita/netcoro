@@ -7,7 +7,7 @@
 <br/>  
 
 # NetCoro
-NetCoro is a conceptual library, that adds coroutines to the c# language
+NetCoro is a conceptual library, that adds coroutines to c# language
 
 Benefits of coroutines:
 - one main thread
