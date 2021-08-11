@@ -1,5 +1,4 @@
 ﻿using NetCoro;
-using SimpleMultithreadQueue;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -13,8 +12,8 @@ namespace Test.Tests {
 		private static CoroManager coroManager;
 		private static int counter = 0;
 
-		const int MIN_SORT_OPERATION_DELAY = 1;
-		const int MAX_SORT_OPERATION_DELAY = 20;
+		const int MIN_SORT_OPERATION_DELAY = 50;
+		const int MAX_SORT_OPERATION_DELAY = 100;
 
 		const int RANDOM_STRING_MIN_SIZE = 8;
 		const int RANDOM_STRING_MAX_sIZE = 24;

@@ -1,20 +1,20 @@
 ﻿using NetCoro.DataStructs;
-using SimpleMultithreadQueue;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace NetCoro {
 	public partial class CoroManager : ICoroManager {
 
-		private MultithreadQueue<CoroExecutionController> corosQueue;
+		private Channel<CoroExecutionController> corosChannel;
 		private LinkedContainer<CoroExecutor> corosContainer;
 		private AwaitableWaiter waiter = new AwaitableWaiter();
 
 		bool catchExceptions;
-		bool receiveNewCorosFlag = true;
+		volatile bool receiveNewCorosFlag = true;
 
 		public int CorosCount => addCorosCoroExectunioController.IsFinished ? corosContainer.Count : corosContainer.Count - 1;
 
@@ -27,27 +27,29 @@ namespace NetCoro {
 		}
 
 		private void Reset() { 
-			corosQueue = new MultithreadQueue<CoroExecutionController>();
+			corosChannel = Channel.CreateUnbounded<CoroExecutionController>(new UnboundedChannelOptions() { SingleReader = true });
 			corosContainer = new LinkedContainer<CoroExecutor>();
 			receiveNewCorosFlag = true;
 			waiter.Clear();
 		}
 
 		private void R_AddNewCoros() { 
-			foreach(CoroExecutionController coro in corosQueue.R_PopAllToNewQueue()) {
+			while(corosChannel.Reader.TryRead(out CoroExecutionController coro)) { 
 				corosContainer.Add(coro.StartUse(this));
 			}
 		}
 
+		CancellationTokenSource corosAddCancellationTokenSource;
+
 		private IEnumerable<Coro> R_AddCorosCoro() { 
-			Promise<Queue<CoroExecutionController>> promise;
+			Promise<CoroExecutionController> promise;
+			
 
 			while(receiveNewCorosFlag) {
-				yield return corosQueue.NewElementWaiter.Await();
-				Queue<CoroExecutionController> addQueue = corosQueue.R_PopAllToNewQueue();
-				//Console.WriteLine($"\t+ {addQueue.Count} new coros");
-				foreach (CoroExecutionController executionControl in addQueue)
-					corosContainer.Add(executionControl.StartUse(this));
+				yield return corosChannel.Reader.ReadAsync(corosAddCancellationTokenSource.Token).AsTask().Await(out promise);
+				if(promise.Status == TaskStatus.RanToCompletion) { 
+					corosContainer.Add(promise.Result.StartUse(this));
+				}
 			}
 
 		}
@@ -55,6 +57,7 @@ namespace NetCoro {
 		
 
 		public void Work() {
+			corosAddCancellationTokenSource = new CancellationTokenSource();
 
 			corosContainer.Clear();
 			R_AddNewCoros();
@@ -112,7 +115,10 @@ namespace NetCoro {
 		private void R_StopReceiveNewCoros() { 
 			receiveNewCorosFlag = false;
 			Interlocked.MemoryBarrier();
-			corosQueue.SkipWait();
+			//corosChannel.SkipWait();
+			try {
+				corosAddCancellationTokenSource.Cancel();
+			} catch(Exception e) { }
 		}
 
 		
@@ -122,7 +128,7 @@ namespace NetCoro {
 
 		public bool AddCoro(CoroExecutionController coroExecutorProperties) {
 			if(receiveNewCorosFlag) {
-				corosQueue.Enqueue(coroExecutorProperties);
+				corosChannel.Writer.WriteAsync(coroExecutorProperties).AsTask().Wait();
 				return true;
 			}
 			return false;
